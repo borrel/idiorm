@@ -164,6 +164,9 @@
         // Name of the column to use as the primary key for
         // this instance only. Overrides the config settings.
         protected $_instance_id_column = null;
+        
+        // adds the SQL_CALC_FOUND_ROWS option to the select statments
+        protected $_found_rows = false;
 
         // ---------------------- //
         // --- STATIC METHODS --- //
@@ -508,6 +511,17 @@
         public static function get_connection_names() {
             return array_keys(self::$_db);
         }
+
+        /**
+         * gets the total number of rows disregarding any limit clouse
+         * use this after the previous query is executed
+         */
+        public static function get_total(){
+            return self->for_table('DUAL')//dummy table 
+                ->raw_query('SELECT FOUND_ROWS() as `count`;')
+                ->find_one()
+                ->count; 
+	}
 
         // ------------------------ //
         // --- INSTANCE METHODS --- //
@@ -1172,6 +1186,15 @@
             $this->_offset = $offset;
             return $this;
         }
+        
+        /**
+         * Add the SQL_CALC_FOUND_ROWS option to the query
+         * you can get the total with the get_total function
+         */
+        public function calc_found_rows(){
+            $this->_found_rows = true;
+            return $this;
+        }
 
         /**
          * Add an ORDER BY clause to the query
@@ -1369,6 +1392,11 @@
          */
         protected function _build_select_start() {
             $fragment = 'SELECT ';
+
+            if($this->_found_rows){
+                $fragment .= 'SQL_CALC_FOUND_ROWS ';
+            }
+
             $result_columns = join(', ', $this->_result_columns);
 
             if (!is_null($this->_limit) &&
